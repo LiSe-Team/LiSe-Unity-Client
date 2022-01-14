@@ -26,6 +26,7 @@ namespace LiSe.Auth
     using System.Collections.Generic;
     using System.Collections;
     using System.Threading.Tasks;
+    using System.IO;
     using UnityEngine;
     using UnityEngine.UI;
     using LiSe;
@@ -43,9 +44,16 @@ namespace LiSe.Auth
         public InputField Username;
         public InputField Password;
 
+        public string LiSePublicKey;
+        public string LiSeURL;
+        public int LiSeMaxKeyAge;
+        public string ApplicationProviderName;
+        public string ApplicationName;
+        public UInt64 LiSeProductId;
+
         public Button Login;
         public Button Logout;
-        public Button CreateUSer;
+        public Text LogoutText;
         public bool UseVrKeyboard = false;
         public GameObject VrKeyboard = null;
 
@@ -64,9 +72,9 @@ namespace LiSe.Auth
         // Flag set when a token is being fetched.  This is used to avoid printing the token
         // in IdTokenChanged() when the user presses the get token button.
         private bool fetchingToken = false;
-        private Vector2 controlsScrollViewVector = Vector2.zero;
         private Vector2 scrollViewVector = Vector2.zero;
         bool UIEnabled = true;
+        private Service server;
 
         // Set the phone authentication timeout to a minute.
         private uint phoneAuthTimeoutMs = 60 * 1000;
@@ -104,6 +112,7 @@ namespace LiSe.Auth
             Logout.onClick.AddListener(SignOut);
             Login.onClick.AddListener(SigninWithEmail);
             if (UseVrKeyboard && VrKeyboard != null) VrKeyboard.SetActive(true);
+            server = new Service() { Key = LiSePublicKey.Replace("\\n", "\n"), ServerUrl = LiSeURL, MaxAge = LiSeMaxKeyAge };
         }
 
         // Handle initialization of the necessary firebase modules:
@@ -235,7 +244,7 @@ namespace LiSe.Auth
 
 
         // Track state changes of the auth object.
-        void AuthStateChanged(object sender, System.EventArgs eventArgs)
+        void AuthStateChanged(object sender, EventArgs eventArgs)
         {
             Firebase.Auth.FirebaseAuth senderAuth = sender as Firebase.Auth.FirebaseAuth;
             Firebase.Auth.FirebaseUser user = null;
@@ -247,7 +256,7 @@ namespace LiSe.Auth
                 {
                     DebugLog("Signed out " + user.UserId);
                     Login.interactable = true;
-                    Logout.interactable = false;
+                    LogoutText.text = "New User";
                 }
                 user = senderAuth.CurrentUser;
                 userByAuth[senderAuth.App.Name] = user;
@@ -258,10 +267,12 @@ namespace LiSe.Auth
                     Username.text = user.Email;
                     Password.text = "";
                     Login.interactable = false;
-                    Logout.interactable = true;
+                    LogoutText.text = "Sign Out";
                     if (VrKeyboard != null)
                         VrKeyboard.SetActive(false);
-                    StartCoroutine(Licence(gameObject));
+                    string localkeyfile = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                    localkeyfile = Path.Combine(localkeyfile, ApplicationProviderName, ApplicationName, senderAuth.CurrentUser.UserId);
+                    StartCoroutine(Licence(gameObject, localkeyfile, server, LiSeProductId, senderAuth.CurrentUser.UserId));
                 }
             }
         }
@@ -270,61 +281,91 @@ namespace LiSe.Auth
         /// Check the licence 
         /// </summary>
         /// <returns></returns>
-        public static IEnumerator Licence(GameObject self)
+        public static IEnumerator Licence(GameObject self, string localkeyfile, Service s, UInt64 pID, string uID)
         {
             Usage key = null;
             Token token = null;
+            LocalKey localKey = new LocalKey();
 
-            Task<Config> tc = Config.Get("virgis.json");
-            while (!tc.IsCompleted) yield return null;
-            if (tc.IsFaulted)
-            {
-                Debug.Log("Config Error :" + tc.Exception.ToString());
-                Application.Quit();
-            }
-            Config m_config = tc.Result;
-            try
-            {
-                Debug.Log($"Config loaded");
-                key = m_config.key;
-                if (key.verify())
+            if (File.Exists(localkeyfile))
                 {
-                    token = key.GetToken();
-                    if (token == null)
-                    {
-                        Debug.LogError("there is an eror in the licence");
-                        Application.Quit();
-                    }
-                }
-                else
+                Task<LocalKey> tc = LocalKey.Get(localkeyfile);
+                while (!tc.IsCompleted) yield return null;
+                if (tc.IsFaulted)
                 {
-                    Debug.LogError("No licence");
+                    Debug.Log("LocalKey Error :" + tc.Exception.ToString());
                     Application.Quit();
-                };
-            }
-            catch (Exception e)
+                }
+                localKey = tc.Result;
+                try
+                {
+                    Debug.Log($"LocalKey loaded");
+                    key = localKey.key;
+                    if (key.Verify(s))
+                    {
+                        token = key.GetToken();
+                        if (token == null)
+                        {
+                            Debug.LogError("there is an eror in the licence");
+                            Application.Quit();
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogError("No licence");
+                        Application.Quit();
+                        yield break;
+                    };
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e.ToString());
+                    Application.Quit();
+                    yield break;
+                }
+                Task t1 = key.ValidateAsync(s);
+                while (!t1.IsCompleted)
+                {
+                    yield return null;
+                }
+                if (t1.IsFaulted)
+                {
+                    Debug.LogError(t1.Exception.ToString());
+                    Application.Quit();
+                    yield break;
+                }
+            } else
             {
-                Debug.LogError(e.ToString());
-                Application.Quit();
+                Debug.Log("Create new key");
+                Task<Usage> t3 = Usage.GetAsync(s, uID, 1, uID, 1, pID);
+                while (!t3.IsCompleted)
+                {
+                    yield return null;
+                }
+                if (t3.IsFaulted)
+                {
+                    Debug.LogError(t3.Exception.ToString());
+                    Application.Quit();
+                    yield break;
+                }
+                localKey = new LocalKey() { key = t3.Result };
+                Task t4 = localKey.Put(localkeyfile);
+                while(!t4.IsCompleted)
+                {
+                    yield return null;
+                }
+                if (t4.IsFaulted)
+                {
+                    Debug.LogError(t4.Exception.ToString());
+                    Application.Quit();
+                    yield break;
+                }
             }
-            Task t = key.validateAsync();
-            while (!t.IsCompleted)
-            {
-                yield return null;
-            }
-            if (t.IsFaulted)
-            {
-                Debug.LogError(t.Exception.ToString());
-                Application.Quit();
-            }
-            else
-            {
-                Debug.Log($"Using valid licence: {token.licenceKey.ToString()} ");
-                m_config.key = key;
-                t = m_config.Put();
-                while (!t.IsCompleted) yield return null;
-                self.SetActive(false);
-            }
+            Debug.Log($"Using valid licence: {token.licenceKey.ToString()} ");
+            localKey.key = key;
+            Task t2 = localKey.Put();
+            while (!t2.IsCompleted) yield return null;
+            self.SetActive(false);
         }
 
         // Track ID token changes.
@@ -383,7 +424,6 @@ namespace LiSe.Auth
             string newDisplayName = displayName;
             return auth.CreateUserWithEmailAndPasswordAsync(Username.text, Password.text)
               .ContinueWithOnMainThread((task) => {
-                  EnableUI();
                   if (LogTaskCompletion(task, "User Creation"))
                   {
                       var user = task.Result;
@@ -660,8 +700,14 @@ namespace LiSe.Auth
         // Sign out the current user.
         protected void SignOut()
         {
-            DebugLog("Signing out.");
-            auth.SignOut();
+            if (auth.CurrentUser != null)
+            {
+                DebugLog("Signing out.");
+                auth.SignOut();
+            } else
+            {
+                CreateUserWithEmailAsync();
+            }
         }
 
         // Delete the currently logged in user.

@@ -197,7 +197,7 @@ MonoBehaviour:
     m_PressedTrigger: Pressed
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
-  m_Interactable: 0
+  m_Interactable: 1
   m_TargetGraphic: {fileID: 3990564127581092846}
   m_OnClick:
     m_PersistentCalls:
@@ -861,7 +861,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Sign Out
+  m_Text: New User
 --- !u!1 &4478913002771914830
 GameObject:
   m_ObjectHideFlags: 0
@@ -1919,8 +1919,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Username: {fileID: 7411623908691062323}
   Password: {fileID: 6312739511397818479}
+  LiSePublicKey: 
+  LiSeURL: 
+  LiSeMaxKeyAge: 0
   Login: {fileID: 8417057060344187068}
   Logout: {fileID: 3770237897397166665}
-  CreateUSer: {fileID: 0}
+  CreateUser: {fileID: 0}
   UseVrKeyboard: 0
   VrKeyboard: {fileID: 0}
