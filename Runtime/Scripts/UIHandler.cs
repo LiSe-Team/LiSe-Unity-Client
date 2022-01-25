@@ -367,7 +367,7 @@ namespace LiSe.Auth
 
         public void SigninWithEmail()
         {
-            SigninWithEmailAsync().Start();
+            SigninWithEmailAsync();
         }
 
         // This is functionally equivalent to the Signin() function.  However, it
