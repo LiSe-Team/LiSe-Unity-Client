@@ -2,7 +2,8 @@
     "name": "LiSeClient",
     "rootNamespace": "",
     "references": [
-        "pemutils"
+        "pemutils",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
