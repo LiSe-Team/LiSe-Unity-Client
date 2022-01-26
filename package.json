@@ -1,6 +1,6 @@
 {
     "name": "com.lise.client",
-    "version": "1.0.0",
+    "version": "0.9.0",
     "displayName": "LiSe Unity Client",
     "description": "Unity Client for LiSe license management",
     "unity": "2020.1",
