@@ -1,6 +1,6 @@
 {
     "name": "com.lise.client",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "displayName": "LiSe Unity Client",
     "description": "Unity Client for LiSe license management",
     "unity": "2020.1",
@@ -8,7 +8,7 @@
       "com.virgis.pem-utils": "1.0.0"
    },
     "author": {
-      "name": "Runette Software Ltd",
+      "name": "LiSe Team",
       "email": "info@runette.co.uk",
       "url": "https://www.runette.co.uk"
     }
