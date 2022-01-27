@@ -27,7 +27,6 @@ namespace LiSe.Auth
     using System.Threading.Tasks;
     using UnityEngine;
     using UnityEngine.UI;
-    using TMPro;
 
     // Handler for UI buttons on the scene.  Also performs some
     // necessary setup (initializing the firebase app, etc) on
@@ -39,11 +38,13 @@ namespace LiSe.Auth
         protected Dictionary<string, Firebase.Auth.FirebaseUser> userByAuth =
           new Dictionary<string, Firebase.Auth.FirebaseUser>();
 
-        public TMP_InputField Username;
-        public TMP_InputField Password;
+        public InputField Username;
+        public InputField Password;
 
         public Button Login;
         public Button Logout;
+        public bool UseVrKeyboard = false;
+        public GameObject VrKeyboard = null;
 
         private string logText = "";
         protected string displayName = "";
@@ -60,10 +61,6 @@ namespace LiSe.Auth
         // Flag set when a token is being fetched.  This is used to avoid printing the token
         // in IdTokenChanged() when the user presses the get token button.
         private bool fetchingToken = false;
-        // Enable / disable password input box.
-        // NOTE: In some versions of Unity the password input box does not work in
-        // iOS simulators.
-        public bool usePasswordInput = false;
         private Vector2 controlsScrollViewVector = Vector2.zero;
         private Vector2 scrollViewVector = Vector2.zero;
         bool UIEnabled = true;
@@ -103,6 +100,7 @@ namespace LiSe.Auth
             });
             Logout.onClick.AddListener(SignOut);
             Login.onClick.AddListener(SigninWithEmail);
+            if (UseVrKeyboard && VrKeyboard != null) VrKeyboard.SetActive(true);
         }
 
         // Handle initialization of the necessary firebase modules:
@@ -254,6 +252,8 @@ namespace LiSe.Auth
                     displayName = user.DisplayName ?? "";
                     Username.text = user.Email;
                     gameObject.SetActive(false);
+                    if (VrKeyboard != null)
+                        VrKeyboard.SetActive(false);
                 }
             }
         }

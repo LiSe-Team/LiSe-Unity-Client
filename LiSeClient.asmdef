@@ -3,7 +3,8 @@
     "rootNamespace": "",
     "references": [
         "pemutils",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "vr-keyboard"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
