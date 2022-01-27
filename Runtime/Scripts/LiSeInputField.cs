@@ -1,5 +1,5 @@
 using UnityEngine.UI;
-using OSVR.UI;
+using VrKeyboard;
 
 namespace LiSe.Auth
 {
