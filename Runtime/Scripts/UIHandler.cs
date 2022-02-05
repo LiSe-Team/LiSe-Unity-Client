@@ -243,6 +243,8 @@ namespace LiSe.Auth
                 if (!signedIn && user != null)
                 {
                     DebugLog("Signed out " + user.UserId);
+                    Login.interactable = true;
+                    Logout.interactable = false;
                 }
                 user = senderAuth.CurrentUser;
                 userByAuth[senderAuth.App.Name] = user;
@@ -251,6 +253,9 @@ namespace LiSe.Auth
                     DebugLog("AuthStateChanged Signed in " + user.UserId);
                     displayName = user.DisplayName ?? "";
                     Username.text = user.Email;
+                    Password.text = "";
+                    Login.interactable = false;
+                    Logout.interactable = true;
                     gameObject.SetActive(false);
                     if (VrKeyboard != null)
                         VrKeyboard.SetActive(false);
