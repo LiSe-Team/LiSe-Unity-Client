@@ -1921,5 +1921,6 @@ MonoBehaviour:
   Password: {fileID: 6312739511397818479}
   Login: {fileID: 8417057060344187068}
   Logout: {fileID: 3770237897397166665}
+  CreateUSer: {fileID: 0}
   UseVrKeyboard: 0
   VrKeyboard: {fileID: 0}

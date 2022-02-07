@@ -24,9 +24,11 @@ namespace LiSe.Auth
     using Firebase.Extensions;
     using System;
     using System.Collections.Generic;
+    using System.Collections;
     using System.Threading.Tasks;
     using UnityEngine;
     using UnityEngine.UI;
+    using LiSe;
 
     // Handler for UI buttons on the scene.  Also performs some
     // necessary setup (initializing the firebase app, etc) on
@@ -43,6 +45,7 @@ namespace LiSe.Auth
 
         public Button Login;
         public Button Logout;
+        public Button CreateUSer;
         public bool UseVrKeyboard = false;
         public GameObject VrKeyboard = null;
 
@@ -256,10 +259,71 @@ namespace LiSe.Auth
                     Password.text = "";
                     Login.interactable = false;
                     Logout.interactable = true;
-                    gameObject.SetActive(false);
                     if (VrKeyboard != null)
                         VrKeyboard.SetActive(false);
+                    StartCoroutine(Licence(gameObject));
                 }
+            }
+        }
+
+        /// <summary>
+        /// Check the licence 
+        /// </summary>
+        /// <returns></returns>
+        public static IEnumerator Licence(GameObject self)
+        {
+            Usage key = null;
+            Token token = null;
+
+            Task<Config> tc = Config.Get("virgis.json");
+            while (!tc.IsCompleted) yield return null;
+            if (tc.IsFaulted)
+            {
+                Debug.Log("Config Error :" + tc.Exception.ToString());
+                Application.Quit();
+            }
+            Config m_config = tc.Result;
+            try
+            {
+                Debug.Log($"Config loaded");
+                key = m_config.key;
+                if (key.verify())
+                {
+                    token = key.GetToken();
+                    if (token == null)
+                    {
+                        Debug.LogError("there is an eror in the licence");
+                        Application.Quit();
+                    }
+                }
+                else
+                {
+                    Debug.LogError("No licence");
+                    Application.Quit();
+                };
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e.ToString());
+                Application.Quit();
+            }
+            Task t = key.validateAsync();
+            while (!t.IsCompleted)
+            {
+                yield return null;
+            }
+            if (t.IsFaulted)
+            {
+                Debug.LogError(t.Exception.ToString());
+                Application.Quit();
+            }
+            else
+            {
+                Debug.Log($"Using valid licence: {token.licenceKey.ToString()} ");
+                m_config.key = key;
+                t = m_config.Put();
+                while (!t.IsCompleted) yield return null;
+                self.SetActive(false);
             }
         }
 
