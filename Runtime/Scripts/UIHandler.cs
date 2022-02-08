@@ -337,7 +337,7 @@ namespace LiSe.Auth
             } else
             {
                 Debug.Log("Create new key");
-                Task<Usage> t3 = Usage.GetAsync(s, uID, 1, uID, 1, pID);
+                Task<Usage> t3 = Usage.GetAsync(s, uID, 1, SystemInfo.deviceUniqueIdentifier, 2, pID);
                 while (!t3.IsCompleted)
                 {
                     yield return null;
