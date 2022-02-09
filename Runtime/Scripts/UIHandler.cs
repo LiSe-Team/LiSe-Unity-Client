@@ -73,7 +73,6 @@ namespace LiSe.Auth
         // in IdTokenChanged() when the user presses the get token button.
         private bool fetchingToken = false;
         private Vector2 scrollViewVector = Vector2.zero;
-        bool UIEnabled = true;
         private Service server;
 
         // Set the phone authentication timeout to a minute.
@@ -157,16 +156,6 @@ namespace LiSe.Auth
                 otherAuth.IdTokenChanged -= IdTokenChanged;
                 otherAuth = null;
             }
-        }
-
-        void DisableUI()
-        {
-            UIEnabled = false;
-        }
-
-        void EnableUI()
-        {
-            UIEnabled = true;
         }
 
         // Output text to the debug log text field, as well as the console.
@@ -299,7 +288,7 @@ namespace LiSe.Auth
                 localKey = tc.Result;
                 try
                 {
-                    Debug.Log($"LocalKey loaded");
+                    Debug.Log($"LocalKey loaded from {localkeyfile}");
                     key = localKey.key;
                     if (key.Verify(s))
                     {
@@ -349,17 +338,33 @@ namespace LiSe.Auth
                     yield break;
                 }
                 localKey = new LocalKey() { key = t3.Result };
-                Task t4 = localKey.Put(localkeyfile);
-                while(!t4.IsCompleted)
+                key = localKey.key;
+                if (key.Verify(s))
                 {
-                    yield return null;
+                    token = key.GetToken();
+                    if (token == null)
+                    {
+                        Debug.LogError("there is an eror in the licence");
+                        Application.Quit();
+                    }
+                    Task t4 = localKey.Put(localkeyfile);
+                    while (!t4.IsCompleted)
+                    {
+                        yield return null;
+                    }
+                    if (t4.IsFaulted)
+                    {
+                        Debug.LogError(t4.Exception.ToString());
+                        Application.Quit();
+                        yield break;
+                    }
                 }
-                if (t4.IsFaulted)
+                else
                 {
-                    Debug.LogError(t4.Exception.ToString());
+                    Debug.LogError("No licence");
                     Application.Quit();
                     yield break;
-                }
+                };
             }
             Debug.Log($"Using valid licence: {token.licenceKey.ToString()} ");
             localKey.key = key;
@@ -416,7 +421,7 @@ namespace LiSe.Auth
         public Task CreateUserWithEmailAsync()
         {
             DebugLog(String.Format("Attempting to create user {0}...", Username.text));
-            DisableUI();
+
 
             // This passes the current displayName through to HandleCreateUserAsync
             // so that it can be passed to UpdateUserProfile().  displayName will be
@@ -443,13 +448,11 @@ namespace LiSe.Auth
             }
             displayName = newDisplayName ?? displayName;
             DebugLog("Updating user profile");
-            DisableUI();
             return auth.CurrentUser.UpdateUserProfileAsync(new Firebase.Auth.UserProfile
             {
                 DisplayName = displayName,
                 PhotoUrl = auth.CurrentUser.PhotoUrl,
             }).ContinueWithOnMainThread(task => {
-                EnableUI();
                 if (LogTaskCompletion(task, "User profile"))
                 {
                 }
@@ -460,7 +463,6 @@ namespace LiSe.Auth
         public Task SigninWithEmailAsync()
         {
             DebugLog(String.Format("Attempting to sign in as {0}...", Username.text));
-            DisableUI();
             if (signInAndFetchProfile)
             {
                 return auth.SignInAndRetrieveDataWithCredentialAsync(
@@ -485,7 +487,6 @@ namespace LiSe.Auth
         public Task SigninWithEmailCredentialAsync()
         {
             DebugLog(String.Format("Attempting to sign in as {0}...", Username.text));
-            DisableUI();
             if (signInAndFetchProfile)
             {
                 return auth.SignInAndRetrieveDataWithCredentialAsync(
@@ -504,7 +505,6 @@ namespace LiSe.Auth
         public Task SigninAnonymouslyAsync()
         {
             DebugLog("Attempting to sign anonymously...");
-            DisableUI();
             return auth.SignInAnonymouslyAsync().ContinueWithOnMainThread(HandleSignInWithUser);
         }
 
@@ -541,7 +541,6 @@ namespace LiSe.Auth
         // Called when a sign-in without fetching profile data completes.
         void HandleSignInWithUser(Task<Firebase.Auth.FirebaseUser> task)
         {
-            EnableUI();
             if (LogTaskCompletion(task, "Sign-in"))
             {
                 DebugLog(String.Format("{0} signed in", task.Result.DisplayName));
@@ -551,7 +550,6 @@ namespace LiSe.Auth
         // Called when a sign-in with profile data completes.
         void HandleSignInWithSignInResult(Task<Firebase.Auth.SignInResult> task)
         {
-            EnableUI();
             if (LogTaskCompletion(task, "Sign-in"))
             {
                 DisplaySignInResult(task.Result, 1);
@@ -606,12 +604,10 @@ namespace LiSe.Auth
                 return tcs.Task;
             }
             DebugLog("Reauthenticating...");
-            DisableUI();
             Firebase.Auth.Credential cred = Firebase.Auth.EmailAuthProvider.GetCredential(Username.text, Password.text);
             if (signInAndFetchProfile)
             {
                 return user.ReauthenticateAndRetrieveDataAsync(cred).ContinueWithOnMainThread(task => {
-                    EnableUI();
                     if (LogTaskCompletion(task, "Reauthentication"))
                     {
                         DisplaySignInResult(task.Result, 1);
@@ -621,7 +617,6 @@ namespace LiSe.Auth
             else
             {
                 return user.ReauthenticateAsync(cred).ContinueWithOnMainThread(task => {
-                    EnableUI();
                     if (LogTaskCompletion(task, "Reauthentication"))
                     {
                     }
@@ -688,11 +683,9 @@ namespace LiSe.Auth
                 return tcs.Task;
             }
             DebugLog("Unlinking email credential");
-            DisableUI();
             return auth.CurrentUser.UnlinkAsync(
               Firebase.Auth.EmailAuthProvider.GetCredential(Username.text, Password.text).Provider)
                 .ContinueWithOnMainThread(task => {
-                    EnableUI();
                     LogTaskCompletion(task, "Unlinking");
                 });
         }
@@ -716,9 +709,7 @@ namespace LiSe.Auth
             if (auth.CurrentUser != null)
             {
                 DebugLog(String.Format("Attempting to delete user {0}...", auth.CurrentUser.UserId));
-                DisableUI();
                 return auth.CurrentUser.DeleteAsync().ContinueWithOnMainThread(task => {
-                    EnableUI();
                     LogTaskCompletion(task, "Delete user");
                 });
             }
@@ -859,9 +850,7 @@ namespace LiSe.Auth
             if (auth.CurrentUser != null)
             {
                 DebugLog("Attempting to ulink user from provider: " + providerId);
-                DisableUI();
                 auth.CurrentUser.UnlinkAsync(providerId).ContinueWithOnMainThread(task => {
-                    EnableUI();
                     DebugLog("Unlink Complete");
                 });
             }

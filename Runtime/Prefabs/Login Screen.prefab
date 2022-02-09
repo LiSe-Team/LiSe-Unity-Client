@@ -349,7 +349,7 @@ MonoBehaviour:
   m_CaretWidth: 1
   m_ReadOnly: 0
   m_ShouldActivateOnSelect: 1
-  UIHandler: {fileID: 0}
+  UIHandler: {fileID: -8417009380186576750}
 --- !u!1 &2008542393602363178
 GameObject:
   m_ObjectHideFlags: 0
@@ -781,7 +781,7 @@ MonoBehaviour:
   m_CaretWidth: 1
   m_ReadOnly: 0
   m_ShouldActivateOnSelect: 1
-  UIHandler: {fileID: 0}
+  UIHandler: {fileID: -8417009380186576750}
 --- !u!1 &3000849898179102300
 GameObject:
   m_ObjectHideFlags: 0
@@ -1922,8 +1922,11 @@ MonoBehaviour:
   LiSePublicKey: 
   LiSeURL: 
   LiSeMaxKeyAge: 0
+  ApplicationProviderName: 
+  ApplicationName: 
+  LiSeProductId: 0
   Login: {fileID: 8417057060344187068}
   Logout: {fileID: 3770237897397166665}
-  CreateUser: {fileID: 0}
+  LogoutText: {fileID: 1386419480061753842}
   UseVrKeyboard: 0
   VrKeyboard: {fileID: 0}
