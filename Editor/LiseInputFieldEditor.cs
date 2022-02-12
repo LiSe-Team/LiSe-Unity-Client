@@ -1,11 +1,12 @@
 using UnityEditor;
+using UnityEditor.UI;
 
 
 namespace LiSe.Auth
 {
 
     [CustomEditor(typeof(LiSeInputField))]
-    public class LiSeInputFieldEditor : UnityEditor.UI.InputFieldEditor
+    public class LiSeInputFieldEditor : InputFieldEditor
     {
         SerializedProperty m_uihandler;
 

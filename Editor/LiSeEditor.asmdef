@@ -1,14 +1,13 @@
 {
-    "name": "LiSeClient",
+    "name": "LiSeEditor",
     "rootNamespace": "",
     "references": [
-        "pemutils",
-        "Unity.TextMeshPro",
-        "vr-keyboard",
         "UnityEditor.UI",
-        "UnityEngine.UI"
+        "LiSeClient"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
