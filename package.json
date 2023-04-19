@@ -1,11 +1,11 @@
 {
     "name": "com.lise.client",
-    "version": "0.9.4",
+    "version": "0.9.5",
     "displayName": "LiSe Unity Client",
     "description": "Unity Client for LiSe license management",
     "unity": "2020.1",
     "dependencies": {
-      "com.virgis.pem-utils": "1.0.0",
+      "com.virgis.pem-utils": "1.0.1",
       "com.virgis.vr-keyboard": "0.9.1"
    },
     "author": {
