@@ -192,22 +192,21 @@ namespace LiSe.Auth
         }
 
         // Display user information reported
-        protected void DisplaySignInResult(Firebase.Auth.SignInResult result, int indentLevel)
+        protected void DisplaySignInResult(Firebase.Auth.AuthResult result, int indentLevel)
         {
             string indent = new String(' ', indentLevel * 2);
-            var metadata = result.Meta;
+            var metadata = result.User.Metadata;
             if (metadata != null)
             {
                 DebugLog(String.Format("{0}Created: {1}", indent, metadata.CreationTimestamp));
                 DebugLog(String.Format("{0}Last Sign-in: {1}", indent, metadata.LastSignInTimestamp));
             }
-            var info = result.Info;
+            var info = result.User;
             if (info != null)
             {
                 DebugLog(String.Format("{0}Additional User Info:", indent));
-                DebugLog(String.Format("{0}  User Name: {1}", indent, info.UserName));
+                DebugLog(String.Format("{0}  User Name: {1}", indent, info.DisplayName));
                 DebugLog(String.Format("{0}  Provider ID: {1}", indent, info.ProviderId));
-                DisplayProfile<string>(info.Profile, indentLevel + 1);
             }
         }
 
@@ -478,7 +477,7 @@ namespace LiSe.Auth
             else
             {
                 return auth.SignInWithEmailAndPasswordAsync(Username.text, Password.text)
-                  .ContinueWithOnMainThread(HandleSignInWithUser);
+                  .ContinueWithOnMainThread(HandleSignInWithAuth);
             }
         }
 
@@ -511,7 +510,7 @@ namespace LiSe.Auth
         public Task SigninAnonymouslyAsync()
         {
             DebugLog("Attempting to sign anonymously...");
-            return auth.SignInAnonymouslyAsync().ContinueWithOnMainThread(HandleSignInWithUser);
+            return auth.SignInAnonymouslyAsync().ContinueWithOnMainThread(HandleSignInWithAuth);
         }
 
         public void AuthenticateToGameCenter()
@@ -553,8 +552,17 @@ namespace LiSe.Auth
             }
         }
 
+        // Called when a sign-in without fetching profile data completes.
+        void HandleSignInWithAuth(Task<Firebase.Auth.AuthResult> task)
+        {
+            if (LogTaskCompletion(task, "Sign-in"))
+            {
+                DebugLog(String.Format("{0} signed in", task.Result.User.DisplayName));
+            }
+        }
+
         // Called when a sign-in with profile data completes.
-        void HandleSignInWithSignInResult(Task<Firebase.Auth.SignInResult> task)
+        void HandleSignInWithSignInResult(Task<Firebase.Auth.AuthResult> task)
         {
             if (LogTaskCompletion(task, "Sign-in"))
             {
@@ -578,7 +586,7 @@ namespace LiSe.Auth
             if (signInAndFetchProfile)
             {
                 return
-                  auth.CurrentUser.LinkAndRetrieveDataWithCredentialAsync(cred).ContinueWithOnMainThread(
+                  auth.CurrentUser.LinkWithCredentialAsync(cred).ContinueWithOnMainThread(
                     task => {
                         if (LogTaskCompletion(task, "Link Credential"))
                         {
