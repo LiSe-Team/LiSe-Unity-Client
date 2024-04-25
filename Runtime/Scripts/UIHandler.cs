@@ -258,8 +258,8 @@ namespace LiSe.Auth
                     LogoutText.text = "Sign Out";
                     if (VrKeyboard != null)
                         VrKeyboard.SetActive(false);
-                    string localkeyfile = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    localkeyfile = Path.Combine(localkeyfile, ApplicationProviderName, ApplicationName, senderAuth.CurrentUser.UserId);
+                    string localkeyfile = Application.persistentDataPath;
+                    localkeyfile = Path.Combine(localkeyfile, senderAuth.CurrentUser.UserId);
                     StartCoroutine(Licence(gameObject, localkeyfile, server, LiSeProductId, senderAuth.CurrentUser.UserId));
                 }
             }
