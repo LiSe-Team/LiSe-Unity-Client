@@ -29,7 +29,9 @@ namespace LiSe.Auth
     using System.IO;
     using UnityEngine;
     using UnityEngine.UI;
+    using UnityEngine.Events;
     using LiSe;
+    using TMPro;
 
     // Handler for UI buttons on the scene.  Also performs some
     // necessary setup (initializing the firebase app, etc) on
@@ -43,6 +45,11 @@ namespace LiSe.Auth
 
         public InputField Username;
         public InputField Password;
+        public TextMeshProUGUI MessageScreen;
+        public UnityEvent<string> LoginEvent;
+        public UnityEvent LogoutEvent;
+        public UnityEvent<string> ErrorEvent;
+        public UnityEvent LicenceSuccess;
 
         public string LiSePublicKey;
         public string LiSeURL;
@@ -53,6 +60,7 @@ namespace LiSe.Auth
 
         public Button Login;
         public Button Logout;
+        public Button ChangePassword;
         public Text LogoutText;
         public bool UseVrKeyboard = false;
         public GameObject VrKeyboard = null;
@@ -104,20 +112,24 @@ namespace LiSe.Auth
                 }
                 else
                 {
-                    Debug.LogError(
+                    ErrorLog(
                       "Could not resolve all Firebase dependencies: " + dependencyStatus);
                 }
             });
             Logout.onClick.AddListener(SignOut);
             Login.onClick.AddListener(SigninWithEmail);
+            ChangePassword.onClick.AddListener(SendPasswordResetEmail);
             if (UseVrKeyboard && VrKeyboard != null) VrKeyboard.SetActive(true);
             server = new Service() { Key = LiSePublicKey.Replace("\\n", "\n"), ServerUrl = LiSeURL, MaxAge = LiSeMaxKeyAge };
+            LoginEvent = new UnityEvent<string>();
+            LogoutEvent = new UnityEvent();
+            ErrorEvent = new UnityEvent<string>();
         }
 
         // Handle initialization of the necessary firebase modules:
         protected void InitializeFirebase()
         {
-            DebugLog("Setting up Firebase Auth");
+            DebugLog("Setting up Authentication");
             auth = Firebase.Auth.FirebaseAuth.DefaultInstance;
             auth.StateChanged += AuthStateChanged;
             auth.IdTokenChanged += IdTokenChanged;
@@ -136,7 +148,7 @@ namespace LiSe.Auth
                 }
                 catch (Exception)
                 {
-                    DebugLog("ERROR: Failed to initialize secondary authentication object.");
+                    ErrorLog("ERROR: Failed to initialize secondary authentication object.");
                 }
             }
             AuthStateChanged(this, null);
@@ -158,18 +170,17 @@ namespace LiSe.Auth
             }
         }
 
-        // Output text to the debug log text field, as well as the console.
+        // Output text to the ErrorEvent text field, as well as the console.
         public void DebugLog(string s)
         {
             Debug.Log(s);
-            logText += s + "\n";
+            MessageScreen.text = s;
+        }
 
-            while (logText.Length > kMaxLogSize)
-            {
-                int index = logText.IndexOf("\n");
-                logText = logText.Substring(index + 1);
-            }
-            scrollViewVector.y = int.MaxValue;
+        public void ErrorLog(string s)
+        {
+            Debug.LogError(s);
+            ErrorEvent.Invoke(s);
         }
 
         // Display additional user profile information.
@@ -194,39 +205,10 @@ namespace LiSe.Auth
         // Display user information reported
         protected void DisplaySignInResult(Firebase.Auth.AuthResult result, int indentLevel)
         {
-            string indent = new String(' ', indentLevel * 2);
-            var metadata = result.User.Metadata;
-            if (metadata != null)
-            {
-                DebugLog(String.Format("{0}Created: {1}", indent, metadata.CreationTimestamp));
-                DebugLog(String.Format("{0}Last Sign-in: {1}", indent, metadata.LastSignInTimestamp));
-            }
             var info = result.User;
             if (info != null)
             {
-                DebugLog(String.Format("{0}Additional User Info:", indent));
-                DebugLog(String.Format("{0}  User Name: {1}", indent, info.DisplayName));
-                DebugLog(String.Format("{0}  Provider ID: {1}", indent, info.ProviderId));
-            }
-        }
-
-        // Display user information.
-        protected void DisplayUserInfo(Firebase.Auth.IUserInfo userInfo, int indentLevel)
-        {
-            string indent = new String(' ', indentLevel * 2);
-            var userProperties = new Dictionary<string, string> {
-                {"Display Name", userInfo.DisplayName},
-                {"Email", userInfo.Email},
-                {"Photo URL", userInfo.PhotoUrl != null ? userInfo.PhotoUrl.ToString() : null},
-                {"Provider ID", userInfo.ProviderId},
-                {"User ID", userInfo.UserId}
-              };
-            foreach (var property in userProperties)
-            {
-                if (!String.IsNullOrEmpty(property.Value))
-                {
-                    DebugLog(String.Format("{0}{1}: {2}", indent, property.Key, property.Value));
-                }
+                DebugLog($"User Name: {info.DisplayName}" );
             }
         }
 
@@ -242,6 +224,7 @@ namespace LiSe.Auth
                 bool signedIn = user != senderAuth.CurrentUser && senderAuth.CurrentUser != null;
                 if (!signedIn && user != null)
                 {
+                    LogoutEvent.Invoke();
                     DebugLog("Signed out " + user.UserId);
                     Login.interactable = true;
                     LogoutText.text = "New User";
@@ -250,7 +233,8 @@ namespace LiSe.Auth
                 userByAuth[senderAuth.App.Name] = user;
                 if (signedIn)
                 {
-                    DebugLog("AuthStateChanged Signed in " + user.UserId);
+                    LoginEvent.Invoke(user.UserId);
+                    DebugLog($"Signed in as {user.Email}, checking licence");
                     displayName = user.DisplayName ?? "";
                     Username.text = user.Email;
                     Password.text = "";
@@ -260,7 +244,7 @@ namespace LiSe.Auth
                         VrKeyboard.SetActive(false);
                     string localkeyfile = Application.persistentDataPath;
                     localkeyfile = Path.Combine(localkeyfile, senderAuth.CurrentUser.UserId);
-                    StartCoroutine(Licence(gameObject, localkeyfile, server, LiSeProductId, senderAuth.CurrentUser.UserId));
+                    StartCoroutine(Licence(gameObject, this, localkeyfile, server, LiSeProductId, senderAuth.CurrentUser.UserId));
                 }
             }
         }
@@ -269,7 +253,13 @@ namespace LiSe.Auth
         /// Check the licence 
         /// </summary>
         /// <returns></returns>
-        public static IEnumerator Licence(GameObject self, string localkeyfile, Service s, UInt64 pID, string uID)
+        public static IEnumerator Licence(GameObject self,
+                                          UIHandler uIHandler,
+                                          string localkeyfile,
+                                          Service s,
+                                          UInt64 pID,
+                                          string uID
+                                          )
         {
             Usage key = null;
             Token token = null;
@@ -281,8 +271,7 @@ namespace LiSe.Auth
                 while (!tc.IsCompleted) yield return null;
                 if (tc.IsFaulted)
                 {
-                    Debug.Log("LocalKey Error :" + tc.Exception.ToString());
-                    Application.Quit();
+                    uIHandler.ErrorLog("LocalKey Error :" + tc.Exception.ToString());
                 }
                 localKey = tc.Result;
                 try
@@ -294,21 +283,18 @@ namespace LiSe.Auth
                         token = key.GetToken();
                         if (token == null)
                         {
-                            Debug.LogError("there is an eror in the licence");
-                            Application.Quit();
+                            uIHandler.ErrorLog("The licence file is corrupt");
                         }
                     }
                     else
                     {
-                        Debug.LogError("No licence");
-                        Application.Quit();
+                        uIHandler.DebugLog("Could not find a valid licence for this User");
                         yield break;
                     };
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError(e.ToString());
-                    Application.Quit();
+                    uIHandler.ErrorLog(e.ToString());
                     yield break;
                 }
                 Task t1 = key.ValidateAsync(s);
@@ -318,13 +304,11 @@ namespace LiSe.Auth
                 }
                 if (t1.IsFaulted)
                 {
-                    Debug.LogError(t1.Exception.ToString());
-                    Application.Quit();
+                    uIHandler.ErrorLog(t1.Exception.ToString());
                     yield break;
                 }
             } else
             {
-                Debug.Log("Create new key");
                 Task<Usage> t3;
                 if  (SystemInfo.deviceUniqueIdentifier != SystemInfo.unsupportedIdentifier) { 
                     t3 = Usage.GetAsync(s, uID, 1, SystemInfo.deviceUniqueIdentifier, 2, pID);
@@ -338,8 +322,7 @@ namespace LiSe.Auth
                 }
                 if (t3.IsFaulted)
                 {
-                    Debug.LogError(t3.Exception.ToString());
-                    Application.Quit();
+                    uIHandler.ErrorLog(t3.Exception.ToString());
                     yield break;
                 }
                 localKey = new LocalKey() { key = t3.Result };
@@ -349,8 +332,7 @@ namespace LiSe.Auth
                     token = key.GetToken();
                     if (token == null)
                     {
-                        Debug.LogError("there is an eror in the licence");
-                        Application.Quit();
+                        uIHandler.ErrorLog("there is an eror in the licence");
                     }
                     Task t4 = localKey.Put(localkeyfile);
                     while (!t4.IsCompleted)
@@ -359,19 +341,18 @@ namespace LiSe.Auth
                     }
                     if (t4.IsFaulted)
                     {
-                        Debug.LogError(t4.Exception.ToString());
-                        Application.Quit();
+                        uIHandler.ErrorLog(t4.Exception.ToString());
                         yield break;
                     }
                 }
                 else
                 {
-                    Debug.LogError("No licence");
-                    Application.Quit();
+                    uIHandler.ErrorLog("No licence");
                     yield break;
                 };
             }
-            Debug.Log($"Using valid licence: {token.licenceKey.ToString()} ");
+            uIHandler.DebugLog($"Valid Licence Found ");
+            uIHandler.LicenceSuccess.Invoke();
             localKey.key = key;
             Task t2 = localKey.Put();
             while (!t2.IsCompleted) yield return null;
@@ -385,7 +366,7 @@ namespace LiSe.Auth
             if (senderAuth == auth && senderAuth.CurrentUser != null && !fetchingToken)
             {
                 senderAuth.CurrentUser.TokenAsync(false).ContinueWithOnMainThread(
-                  task => DebugLog(String.Format("Token[0:8] = {0}", task.Result.Substring(0, 8))));
+                  task => Debug.Log(String.Format("Token[0:8] = {0}", task.Result.Substring(0, 8))));
             }
         }
 
@@ -396,21 +377,22 @@ namespace LiSe.Auth
             bool complete = false;
             if (task.IsCanceled)
             {
-                DebugLog(operation + " canceled.");
+                ErrorLog(operation + " canceled.");
             }
             else if (task.IsFaulted)
             {
-                DebugLog(operation + " encounted an error.");
+                ErrorLog(operation + " encounted an error.");
                 foreach (Exception exception in task.Exception.Flatten().InnerExceptions)
                 {
                     string authErrorCode = "";
                     Firebase.FirebaseException firebaseEx = exception as Firebase.FirebaseException;
                     if (firebaseEx != null)
                     {
-                        authErrorCode = String.Format("AuthError.{0}: ",
-                          ((Firebase.Auth.AuthError)firebaseEx.ErrorCode).ToString());
+                        authErrorCode = String.Format("{0}",
+                          (Firebase.Auth.AuthError)firebaseEx.ErrorCode).ToString();
                     }
-                    DebugLog(authErrorCode + exception.ToString());
+                    DebugLog(authErrorCode);
+                    ErrorLog(authErrorCode + exception.ToString());
                 }
             }
             else if (task.IsCompleted)
@@ -668,7 +650,7 @@ namespace LiSe.Auth
                 fetchingToken = false;
                 if (LogTaskCompletion(task, "User token fetch"))
                 {
-                    DebugLog("Token = " + task.Result);
+                    Debug.Log("Token = " + task.Result);
                 }
             });
         }
@@ -798,7 +780,7 @@ namespace LiSe.Auth
                 }
                 if (signin_task.Exception != null)
                 {
-                    DebugLog("SignInWithProviderTask - Exception: " + signin_task.Exception.Message);
+                    ErrorLog("SignInWithProviderTask - Exception: " + signin_task.Exception.Message);
                     return;
                 }
 
@@ -892,7 +874,7 @@ namespace LiSe.Auth
                   }
               },
               verificationFailed: (error) => {
-                  DebugLog("Phone Auth, verification failed: " + error);
+                  ErrorLog("Phone Auth, verification failed: " + error);
               },
               codeSent: (id, token) => {
                   phoneAuthVerificationId = id;
