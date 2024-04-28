@@ -49,7 +49,7 @@ namespace LiSe.Auth
         public UnityEvent<string> LoginEvent;
         public UnityEvent LogoutEvent;
         public UnityEvent<string> ErrorEvent;
-        public UnityEvent LicenceSuccess;
+        public UnityEvent<Token> LicenceSuccess;
 
         public string LiSePublicKey;
         public string LiSeURL;
@@ -121,9 +121,6 @@ namespace LiSe.Auth
             ChangePassword.onClick.AddListener(SendPasswordResetEmail);
             if (UseVrKeyboard && VrKeyboard != null) VrKeyboard.SetActive(true);
             server = new Service() { Key = LiSePublicKey.Replace("\\n", "\n"), ServerUrl = LiSeURL, MaxAge = LiSeMaxKeyAge };
-            LoginEvent = new UnityEvent<string>();
-            LogoutEvent = new UnityEvent();
-            ErrorEvent = new UnityEvent<string>();
         }
 
         // Handle initialization of the necessary firebase modules:
@@ -233,8 +230,9 @@ namespace LiSe.Auth
                 userByAuth[senderAuth.App.Name] = user;
                 if (signedIn)
                 {
+                    Debug.Log($"UserID is {user.UserId}");
                     LoginEvent.Invoke(user.UserId);
-                    DebugLog($"Signed in as {user.Email}, checking licence");
+                    DebugLog($"Signed in as {user.Email} /n checking licence");
                     displayName = user.DisplayName ?? "";
                     Username.text = user.Email;
                     Password.text = "";
@@ -352,7 +350,7 @@ namespace LiSe.Auth
                 };
             }
             uIHandler.DebugLog($"Valid Licence Found ");
-            uIHandler.LicenceSuccess.Invoke();
+            uIHandler.LicenceSuccess.Invoke(token);
             localKey.key = key;
             Task t2 = localKey.Put();
             while (!t2.IsCompleted) yield return null;
