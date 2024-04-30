@@ -219,15 +219,16 @@ namespace LiSe.Auth
             if (senderAuth == auth && senderAuth.CurrentUser != user)
             {
                 bool signedIn = user != senderAuth.CurrentUser && senderAuth.CurrentUser != null;
-                if (!signedIn && user != null)
-                {
-                    LogoutEvent.Invoke();
-                    DebugLog("Signed out " + user.UserId);
-                    Login.interactable = true;
-                    LogoutText.text = "New User";
-                }
                 user = senderAuth.CurrentUser;
                 userByAuth[senderAuth.App.Name] = user;
+                if (!signedIn)
+                {
+                    DebugLog("Signed out ");
+                    Login.interactable = true;
+                    LogoutText.text = "New User";
+                    LogoutEvent.Invoke();
+                    return;
+                }
                 if (signedIn)
                 {
                     Debug.Log($"UserID is {user.UserId}");
