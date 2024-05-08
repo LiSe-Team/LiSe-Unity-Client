@@ -6,7 +6,7 @@
     "unity": "2020.1",
     "dependencies": {
       "com.virgis.pem-utils": "1.0.1",
-      "com.virgis.vr-keyboard": "0.9.1"
+      "com.virgis.vr-keyboard": "1.0.0"
    },
     "author": {
       "name": "LiSe Team",
