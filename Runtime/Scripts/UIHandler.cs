@@ -82,6 +82,10 @@ namespace LiSe.Auth
         private bool fetchingToken = false;
         private Vector2 scrollViewVector = Vector2.zero;
         private Service server;
+        private bool b_FirebaseInitialized = false;
+        private string m_Username; //used for defered logon at startup
+        private string m_Password; //used for defered logon at startup
+        private string m_Credentials; // used for defered logon at startup
 
         // Set the phone authentication timeout to a minute.
         private uint phoneAuthTimeoutMs = 60 * 1000;
@@ -117,7 +121,7 @@ namespace LiSe.Auth
                 }
             });
             Logout.onClick.AddListener(SignOut);
-            Login.onClick.AddListener(SigninWithEmail);
+            Login.onClick.AddListener(SigninInternal);
             ChangePassword.onClick.AddListener(SendPasswordResetEmail);
             if (UseVrKeyboard && VrKeyboard != null) VrKeyboard.SetActive(true);
             server = new Service() { Key = LiSePublicKey.Replace("\\n", "\n"), ServerUrl = LiSeURL, MaxAge = LiSeMaxKeyAge };
@@ -149,6 +153,9 @@ namespace LiSe.Auth
                 }
             }
             AuthStateChanged(this, null);
+            b_FirebaseInitialized = true;
+            if (m_Username != null) SigninWithUsernameAndPassword(m_Username, m_Password);
+
         }
 
         void OnDestroy()
@@ -446,25 +453,38 @@ namespace LiSe.Auth
         }
 
         // Sign-in with an email and password.
-        public Task SigninWithEmailAsync()
+        public Task SigninWithEmailAsync(string userName, string password)
         {
             DebugLog(String.Format("Attempting to sign in as {0}...", Username.text));
             if (signInAndFetchProfile)
             {
                 return auth.SignInAndRetrieveDataWithCredentialAsync(
-                  Firebase.Auth.EmailAuthProvider.GetCredential(Username.text, Password.text)).ContinueWithOnMainThread(
+                  Firebase.Auth.EmailAuthProvider.GetCredential(userName, password)).ContinueWithOnMainThread(
                     HandleSignInWithSignInResult);
             }
             else
             {
-                return auth.SignInWithEmailAndPasswordAsync(Username.text, Password.text)
+                return auth.SignInWithEmailAndPasswordAsync(userName, password)
                   .ContinueWithOnMainThread(HandleSignInWithAuth);
             }
         }
 
-        public void SigninWithEmail()
+        public void SigninInternal()
         {
-            SigninWithEmailAsync();
+            SigninWithEmailAsync(Username.text, Password.text);
+        }
+
+        public void SigninWithUsernameAndPassword(string userName, string password)
+        {
+            if (b_FirebaseInitialized)
+            {
+                SigninWithEmailAsync(userName, password);
+            } else
+            {
+                m_Username = userName;
+                m_Password = password;
+            }
+
         }
 
         // This is functionally equivalent to the Signin() function.  However, it
