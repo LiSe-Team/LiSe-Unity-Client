@@ -879,7 +879,7 @@ namespace LiSe.Auth
         protected void VerifyPhoneNumber()
         {
             var phoneAuthProvider = Firebase.Auth.PhoneAuthProvider.GetInstance(auth);
-            phoneAuthProvider.VerifyPhoneNumber(phoneNumber, phoneAuthTimeoutMs, null,
+            phoneAuthProvider.VerifyPhoneNumber(new Firebase.Auth.PhoneAuthOptions() { PhoneNumber = phoneNumber, TimeoutInMilliseconds = phoneAuthTimeoutMs },
               verificationCompleted: (cred) => {
                   DebugLog("Phone Auth, auto-verification completed");
                   if (signInAndFetchProfile)
