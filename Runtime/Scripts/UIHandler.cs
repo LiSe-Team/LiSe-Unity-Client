@@ -240,7 +240,7 @@ namespace LiSe.Auth
                 {
                     Debug.Log($"UserID is {user.UserId}");
                     LoginEvent.Invoke(user.UserId);
-                    DebugLog($"Signed in as {user.Email} /n checking licence");
+                    DebugLog($"<color=green>Signed in as {user.Email} </color>\n checking licence");
                     displayName = user.DisplayName ?? "";
                     Username.text = user.Email;
                     Password.text = "";
