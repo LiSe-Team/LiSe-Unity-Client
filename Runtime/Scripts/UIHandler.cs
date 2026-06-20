@@ -706,7 +706,7 @@ namespace LiSe.Auth
         }
 
         // Sign out the current user.
-        protected void SignOut()
+        public void SignOut()
         {
             if (auth.CurrentUser != null)
             {
